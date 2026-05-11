@@ -1,139 +1,73 @@
-💰 FinSense: Level 5 Autonomous Quant Analyst System
+# 💰 FinSense: Level 5 Autonomous Quant Analyst System
 
-🎯 Project Overview
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Model: Llama 3.3](https://img.shields.io/badge/Model-Llama--3.3--70B-green.svg)](https://groq.com/)
 
-FinSense is a state-of-the-art Multi-Agent System (MAS) designed to simulate Level 5 Autonomy in high-frequency quantitative finance.
+**FinSense** is a production-grade Multi-Agent System (MAS) designed for high-frequency quantitative finance. It utilizes a dynamic **LLM Orchestrator** to manage a team of specialized agents, achieving **Level 5 Autonomy** through self-correction and automated failure handling.
 
-Unlike traditional trading bots that follow linear scripts and crash upon failure, FinSense features a dynamic Orchestrator Agent. This central intelligence continuously monitors the execution pipeline and autonomously self-corrects when it encounters data errors, policy violations, or market anomalies—without requiring human intervention.
+---
 
-🧠 Key Autonomous Features: Self-Healing Workflow
+## 🧠 System Architecture: The "Hub-and-Spoke" Model
 
-The system demonstrates three specific "Self-Correction Loops" that define its Level 5 capabilities:
+Unlike traditional trading bots, FinSense does not follow a linear script. It uses a central **Orchestrator Agent** that monitors every step of the pipeline and autonomously decides the next course of action based on market conditions and agent outputs.
 
-1. Strategic Failure Correction (Policy Violation)
+### 🤖 The Agent Team
+- **DataFetcher**: High-speed market data retrieval and summarization.
+- **ValuationCritic**: Quantitative fundamental analysis and BUY/SELL recommendations.
+- **RiskManager**: Institutional compliance engine enforcing VAR and notional limits.
+- **ExecutionBot**: Smart-order routing and automated trade execution.
+- **Self-Correction Suite**: 
+  - `Fractionalizer`: Resizes rejected trades for compliance.
+  - `NewsAnalysis`: Diagnoses market freezes (Black Swan detection).
+  - `Liquidation`: Urgent de-risking during confirmed crises.
+  - `SimpleValuation`: Low-latency backup for slow models.
 
-Scenario: The RiskManager rejects a trade because the volume is too high (STATUS_POLICY_REJECT).
+---
 
-Autonomous Fix: The Orchestrator reroutes to the Fractionalizer Agent, which mathematically optimizes the trade size to fit within risk limits and automatically resubmits it for approval.
+## 🛡️ Autonomous Self-Healing Workflows
 
-2. Market Failure Correction (Black Swan Event)
+FinSense is built to handle the "Edge Cases" that crash standard systems:
 
-Scenario: The DataFetcher detects a trading halt or market freeze (STATUS_MARKET_FREEZE).
+1. **Strategic Failure (Policy Reject)**: If the `RiskManager` rejects a trade for being too large, the Orchestrator reroutes to the `Fractionalizer` to optimize the size and resubmit.
+2. **Market Failure (Market Freeze)**: Upon detecting a halt, the system activates `NewsAnalysis`. If a crisis is confirmed, `Liquidation` is triggered; otherwise, it resumes via a technical fallback.
+3. **Process Failure (Latency Error)**: If the primary `ValuationCritic` takes >5 seconds, the system automatically swaps in the heuristic `SimpleValuation` agent to ensure execution timing.
 
-Autonomous Fix: The system triggers the News Analysis Agent to diagnose the cause. If a fundamental crisis is confirmed, it activates the Liquidation Agent to dump assets immediately. If it's a glitch, it routes to the Fallback Agent.
+---
 
-3. Process Failure Correction (Latency Optimization)
+## 🚀 Tech Stack & Reliability
 
-Scenario: The primary ValuationCritic model takes too long to compute (STATUS_PROCESS_SLOW).
+- **Inference**: [Groq LPU](https://groq.com/) using `Llama-3.3-70B` for sub-second agent reasoning.
+- **Schema**: Strict Pydantic validation for all agent communications.
+- **Async**: Fully asynchronous execution pipeline (`asyncio`).
+- **UI**: High-fidelity "War Room" dashboard built with [Gradio](https://gradio.app/).
+- **Validation**: Institutional-grade prompts with multi-status logic.
 
-Autonomous Fix: The Orchestrator detects the latency violation and instantly swaps in the Simple Valuation Agent (heuristic-based) to ensure the trade decision is made within the required time window.
+---
 
-📐 System Architecture
+## ⚙️ Installation & Usage
 
-The architecture relies on a Hub-and-Spoke model where the Orchestrator manages state and routing between specialized agents.
+### 1. Clone & Install
+```bash
+git clone https://github.com/LVVignesh/FinSense-Quant-Agent.git
+cd FinSense-Quant-Agent
+pip install -r requirements.txt
+```
 
-The Agent Team
+### 2. Configure Environment
+Create a `.env` file in the root directory:
+```text
+GROQ_API_KEY=your_groq_key_here
+MOCK_MODE=False
+```
 
-Agent Name
-
-Role
-
-Status Codes Monitored
-
-Orchestrator
-
-Controller: Manages dynamic routing and error handling.
-
-All
-
-DataFetcher
-
-Sensor: Retrieves market data via simulated APIs.
-
-STATUS_MARKET_FREEZE
-
-ValuationCritic
-
-Planner: Deep fundamental analysis (DCF).
-
-STATUS_PROCESS_SLOW
-
-RiskManager
-
-Governance: Enforces portfolio risk limits.
-
-STATUS_POLICY_REJECT
-
-ExecutionBot
-
-Actor: Simulates exchange order placement.
-
-STATUS_SUCCESS
-
-Fractionalizer
-
-Corrector: Optimizes trade size for compliance.
-
-(Strategic Fix)
-
-NewsAnalysis
-
-Corrector: Diagnoses external market shocks.
-
-(Market Fix)
-
-SimpleValuation
-
-Corrector: Low-latency backup analysis.
-
-(Process Fix)
-
-⚙️ Setup and Usage
-
-The project is encapsulated in a single Python script using Gradio for a real-time "War Room" dashboard.
-
-1. Prerequisites
-
-Python 3.8 or higher
-
-pip
-
-2. Installation
-
-Clone the repository and install the required UI library:
-
-git clone [https://github.com/yourusername/FinSense.git](https://github.com/yourusername/FinSense.git)
-cd FinSense
-pip install gradio
-
-
-3. Running the Simulation
-
-Launch the interactive dashboard:
-
+### 3. Launch Dashboard
+```bash
 python main.py
+```
 
+---
 
-4. Demo Scenarios
+## 📄 License
 
-Once the UI is running, enter these specific keywords into the "Stock Ticker" box to trigger the different autonomous paths:
-
-GOOGL -> Standard Success Path (Buy)
-
-POLICY_REJECT_DEMO -> Strategic Correction (Risk Reject -> Resize -> Approve)
-
-MARKET_FREEZE_DEMO -> Market Correction (Freeze -> News Analysis -> Liquidation)
-
-SLOW_PROCESS_DEMO -> Process Correction (Slow Val -> Fast Val -> Execution)
-
-🔮 Future Scope
-
-Real API Integration: Replace mock logic with live Bloomberg/Alpaca APIs.
-
-Vector Memory: Implement Pinecone/ChromaDB for long-term strategy recall.
-
-Reinforcement Learning: Allow the Orchestrator to "learn" which correction paths yield the highest profit over time.
-
-📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
