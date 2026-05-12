@@ -16,7 +16,7 @@ from constants.status import AgentStatus
 # Phase 3 Upgrade: Flexible Schema
 class AgentResponse(BaseModel):
     status: str = "DATA_ERROR"
-    output: str = "No output provided."
+    output: Any = "No output provided."
     confidence: float = 0.0
     reasoning: str = "No reasoning provided."
 
