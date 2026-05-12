@@ -35,7 +35,11 @@ class FinSenseApp:
         logs = []
         self.history = [] # Reset history for new run
         
-        # Safeguard: Limit iterations to prevent infinite loops
+        # FIX 6: Fallback loop protection
+        fallback_count = 0
+        MAX_FALLBACKS = 2
+        
+        # Safeguard: Limit total iterations
         max_iterations = 15
         iteration_count = 0
         
@@ -48,11 +52,11 @@ class FinSenseApp:
             logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 Activating {current_agent_name}...")
             yield {"logs": "\n".join(logs), "status": f"Running: {current_agent_name}"}
             
-            # Prepare Structured Context for the Agent
+            # Prepare Structured Context
             context = {
                 "ticker": ticker,
                 "last_result": self.history[-1] if self.history else None,
-                "history": self.history[-3:] # Pass recent history for context
+                "history": self.history[-3:]
             }
             
             # Execute Agent
@@ -67,8 +71,14 @@ class FinSenseApp:
                 
                 yield {"logs": "\n".join(logs), "status": f"Agent {current_agent_name} Completed"}
                 
+                # Check for infinite fallback loops
+                if current_agent_name == "FallbackAgent":
+                    fallback_count += 1
+                    if fallback_count >= MAX_FALLBACKS:
+                        logs.append("🛑 Max fallback retries reached. Terminating safely to prevent loop.")
+                        break
+
                 # Ask Orchestrator what to do next
-                # PASS STRUCTURED STATE TO ORCHESTRATOR
                 workflow_state = {
                     "last_result": result,
                     "history": self.history

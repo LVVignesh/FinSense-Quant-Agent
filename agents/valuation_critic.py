@@ -5,25 +5,29 @@ from constants.status import AgentStatus
 class ValuationCritic(BaseAgent):
     def __init__(self):
         system_prompt = """You are a senior quantitative analyst. 
-Objective: Compare stock P/E to sector norms (Tech: 25, Auto: 15). 
+Objective: Compare stock P/E to sector norms and recommend a trade. 
 Constraints: 
 - If P/E < Norm: Recommend BUY. 
 - If P/E > Norm: Recommend SELL.
-- Output must contain the words 'BUY' or 'SELL'.
-- Reasoning must justify the recommendation based on the valuation gap.
+- You MUST output the full trade details: Recommendation, Price, and Quantity.
+- Format: "REC: BUY 1000 units of {ticker} at ${price} (P/E: {pe})"
 
 Valid Statuses: SUCCESS, PROCESS_SLOW
 """
         super().__init__("ValuationCritic", system_prompt)
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        last_output = context.get("last_result", {}).get("output", "")
-        return await self._call_llm(f"Evaluate compliance for this recommendation: {last_output}")
+        # Get market data from history (first element is DataFetcher)
+        history = context.get("history", [])
+        data_fetcher_output = history[0].get("output", "") if history else "No data"
+        
+        return await self._call_llm(f"Analyze this market data and provide a specific quantity to buy/sell: {data_fetcher_output}")
 
     def _mock_response(self, query: str) -> Dict[str, Any]:
+        # Extract ticker from query if possible
         return {
             "status": AgentStatus.SUCCESS,
-            "output": "VALUATION_MODEL: UNDERVALUED. Target=$210. REC: BUY.",
+            "output": "VALUATION_MODEL: UNDERVALUED. REC: BUY 1000 units at $175.50 (P/E: 24.5).",
             "confidence": 0.95,
-            "reasoning": "P/E of 24.5 is below tech sector norm of 25.0, suggesting 5% upside."
+            "reasoning": "P/E is below sector norm. Recommending a standard institutional block of 1000 units."
         }

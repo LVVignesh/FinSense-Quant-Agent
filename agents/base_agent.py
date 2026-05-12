@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 import os
 import json
 import asyncio
+import re
 from pydantic import BaseModel, Field, ValidationError
 from groq import AsyncGroq
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -12,11 +13,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import GROQ_API_KEY, MOCK_MODE, DEFAULT_MODEL
 from constants.status import AgentStatus
 
+# Phase 3 Upgrade: Flexible Schema
 class AgentResponse(BaseModel):
-    status: str
-    output: str
-    confidence: float = Field(ge=0.0, le=1.0)
-    reasoning: str
+    status: str = "DATA_ERROR"
+    output: str = "No output provided."
+    confidence: float = 0.0
+    reasoning: str = "No reasoning provided."
 
 class BaseAgent(ABC):
     def __init__(self, name: str, system_prompt: str):
@@ -26,8 +28,28 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Context now contains: ticker, last_result, history"""
         pass
+
+    def _extract_json(self, raw_text: str) -> Dict[str, Any]:
+        """Safely extracts JSON from LLM response."""
+        try:
+            cleaned = raw_text.strip()
+            # Handle markdown code blocks
+            if "```" in cleaned:
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            
+            return json.loads(cleaned.strip())
+        except Exception:
+            # Fallback to regex if simple cleaning fails
+            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group())
+                except:
+                    pass
+            return {}
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def _call_llm(self, user_prompt: str) -> Dict[str, Any]:
@@ -39,27 +61,36 @@ class BaseAgent(ABC):
                 self.client.chat.completions.create(
                     model=DEFAULT_MODEL,
                     messages=[
-                        {"role": "system", "content": self.system_prompt},
+                        {"role": "system", "content": self.system_prompt + "\n\nCRITICAL: Return ONLY a raw JSON object. Use this exact keys: 'status', 'output', 'confidence', 'reasoning'."},
                         {"role": "user", "content": user_prompt}
                     ],
-                    response_format={"type": "json_object"}
+                    temperature=0.1
                 ),
-                timeout=5.0
+                timeout=10.0 # Increased timeout for reliability
             )
             
             content = response.choices[0].message.content
-            validated_response = AgentResponse.model_validate_json(content)
-            return validated_response.model_dump()
+            print(f"DEBUG [{self.name}] Raw Response: {content[:200]}...") # Log raw response for debugging
+            
+            extracted_data = self._extract_json(content)
+            
+            # Use model_validate with default values for missing fields
+            try:
+                validated_response = AgentResponse.model_validate(extracted_data)
+                return validated_response.model_dump()
+            except ValidationError as ve:
+                print(f"DEBUG [{self.name}] Validation failed on: {extracted_data}")
+                # Create a semi-valid response manually if Pydantic fails
+                return {
+                    "status": str(extracted_data.get("status", AgentStatus.DATA_ERROR)),
+                    "output": str(extracted_data.get("output", "Output parsing failed.")),
+                    "confidence": float(extracted_data.get("confidence", 0.0)),
+                    "reasoning": str(extracted_data.get("reasoning", "Reasoning parsing failed."))
+                }
 
-        except asyncio.TimeoutError:
-            return {
-                "status": AgentStatus.PROCESS_SLOW,
-                "output": "LATENCY_CRITICAL: Timeout during inference.",
-                "confidence": 0.0,
-                "reasoning": "Agent failed to respond within 5000ms SLA."
-            }
         except Exception as e:
-            # Tenacity will automatically retry this
+            error_type = type(e).__name__
+            print(f"[{self.name}] API Error: {error_type} - {str(e)}")
             raise e
 
     @abstractmethod

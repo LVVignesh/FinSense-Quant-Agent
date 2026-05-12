@@ -8,7 +8,7 @@ class FallbackAgent(BaseAgent):
 Objective: Handle API failures, data errors, and technical anomalies.
 Constraints:
 - Initiate secondary data retrieval or wait-and-retry protocols.
-- Output 'FALLBACK_ACTION' and details.
+- Always return a clear 'output' field explaining the recovery step.
 
 Valid Statuses: SUCCESS
 """
@@ -21,7 +21,7 @@ Valid Statuses: SUCCESS
     def _mock_response(self, query: str) -> Dict[str, Any]:
         return {
             "status": AgentStatus.SUCCESS,
-            "output": "FALLBACK_ACTION: Secondary data feed activated. Watch order placed.",
+            "output": "FALLBACK_ACTION: Technical anomaly handled. Rerouting to redundant workflow path.",
             "confidence": 1.0,
-            "reasoning": "Technical anomaly detected; switching to redundant infrastructure for data integrity."
+            "reasoning": "Standard technical recovery protocol triggered to maintain system uptime."
         }
