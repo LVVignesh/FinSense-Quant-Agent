@@ -35,7 +35,7 @@ class FinSenseApp:
         logs = []
         self.history = [] # Reset history for new run
         
-        # FIX 6: Fallback loop protection
+        # Fallback loop protection
         fallback_count = 0
         MAX_FALLBACKS = 2
         
@@ -52,12 +52,19 @@ class FinSenseApp:
             logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 Activating {current_agent_name}...")
             yield {"logs": "\n".join(logs), "status": f"Running: {current_agent_name}"}
             
-            # Prepare Structured Context
-            context = {
-                "ticker": ticker,
-                "last_result": self.history[-1] if self.history else None,
-                "history": self.history[-3:]
-            }
+            # BUG 2 FIX: Build a richer context for the agent
+            if current_agent_name == "ExecutionBot":
+                # Special Master Context for the final trader
+                valuation_data = self.history[1].get("output", "") if len(self.history) > 1 else "N/A"
+                risk_data = self.history[-1].get("output", "") if self.history else "N/A"
+                context_str = f"TICKER: {ticker}\nVALUATION: {valuation_data}\nRISK_APPROVAL: {risk_data}\nACTION: Execute this approved trade now."
+                context = {"ticker": ticker, "last_result": {"output": context_str}, "history": self.history}
+            else:
+                context = {
+                    "ticker": ticker,
+                    "last_result": self.history[-1] if self.history else None,
+                    "history": self.history[-3:]
+                }
             
             # Execute Agent
             try:
@@ -75,7 +82,7 @@ class FinSenseApp:
                 if current_agent_name == "FallbackAgent":
                     fallback_count += 1
                     if fallback_count >= MAX_FALLBACKS:
-                        logs.append("🛑 Max fallback retries reached. Terminating safely to prevent loop.")
+                        logs.append("🛑 Max fallback retries reached. Terminating safely.")
                         break
 
                 # Ask Orchestrator what to do next
