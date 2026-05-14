@@ -1,32 +1,38 @@
 from .base_agent import BaseAgent
 from typing import Dict, Any
 from constants.status import AgentStatus
+import copy
 
 class Fractionalizer(BaseAgent):
     def __init__(self):
-        system_prompt = """You are a trade optimization agent (Fractionalizer).
-Objective: Optimize rejected trade sizes by reducing the quantity while keeping the action (BUY/SELL).
-
-Constraints:
-- Mathematically reduce the quantity (e.g., divide by 2).
-- You MUST maintain the original action (If original was SELL, keep it SELL).
-- You MUST maintain the Price in your output.
-- Status must be SUCCESS.
-
-Valid Statuses: SUCCESS
-"""
-        super().__init__("Fractionalizer", system_prompt)
+        super().__init__("Fractionalizer", "Deterministic Optimization Component")
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        last_output = context.get("last_result", {}).get("output", "")
-        return await self._call_llm(f"Optimize this rejected trade size. Keep the same action (BUY/SELL) but reduce quantity: {last_output}")
+        """Pure Python Deterministic Fractionalization. NO LLM INVOLVED."""
+        last_output = context.get("last_result", {}).get("output", {})
+        
+        if not isinstance(last_output, dict) or "quantity" not in last_output:
+            return {
+                "status": AgentStatus.DATA_ERROR,
+                "output": last_output,
+                "confidence": 0.0,
+                "reasoning": "Fractionalizer requires structured dictionary input with 'quantity'."
+            }
 
-    def _mock_response(self, query: str) -> Dict[str, Any]:
-        # Handle SELL or BUY in mock
-        action = "SELL" if "SELL" in query else "BUY"
+        # Create a deep copy to mutate the state
+        new_state = copy.deepcopy(last_output)
+        
+        # Mathematically reduce quantity by 50%
+        old_qty = new_state["quantity"]
+        new_qty = int(old_qty * 0.5)
+        new_state["quantity"] = new_qty
+        
         return {
             "status": AgentStatus.SUCCESS,
-            "output": f"ALGO_OPTIMIZATION: Size reduced. NEW REC: {action} 500 units at $175.50.",
+            "output": new_state,
             "confidence": 1.0,
-            "reasoning": f"Reducing {action} size by 50% to satisfy institutional risk constraints while maintaining direction."
+            "reasoning": f"PYTHON_OPTIMIZATION: Reduced quantity from {old_qty} to {new_qty} to satisfy risk constraints."
         }
+
+    def _mock_response(self, query: str) -> Dict[str, Any]:
+        pass # Not used since we don't call the LLM anymore
