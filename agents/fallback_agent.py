@@ -10,9 +10,9 @@ Constraints:
 - Initiate secondary data retrieval or wait-and-retry protocols.
 - Always return a clear 'output' field explaining the recovery step.
 
-Valid Statuses: SUCCESS
+STATUS FIELD RULE: Always use exactly 'SUCCESS'. Never use 'OK', 'ok', 'done', or any other value.
 """
-        super().__init__("FallbackAgent", system_prompt)
+        super().__init__("FallbackAgent", system_prompt, fast_mode=True)
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         last_output = context.get("last_result", {}).get("output", "")

@@ -10,9 +10,11 @@ Constraints:
 - Use simplified P/E heuristics.
 - Output 'FAST_VALUATION' and BUY/SELL recommendation.
 
+STATUS FIELD RULE: Always use exactly 'SUCCESS'. Never use 'OK', 'ok', 'done', or any other value.
+
 Valid Statuses: SUCCESS
 """
-        super().__init__("SimpleValuation", system_prompt)
+        super().__init__("SimpleValuation", system_prompt, fast_mode=True)
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         last_output = context.get("last_result", {}).get("output", "")

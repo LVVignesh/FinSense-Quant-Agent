@@ -93,8 +93,16 @@ class FinSenseApp:
                 current_agent_name = await self.orchestrator.decide_next_agent(current_agent_name, workflow_state)
                 
             except Exception as e:
-                logs.append(f"⚠️ Critical Error in {current_agent_name}: {str(e)}")
-                current_agent_name = "FallbackAgent"
+                error_msg = str(e)
+                logs.append(f"⚠️ Error in {current_agent_name}: {type(e).__name__}")
+                
+                # If ValuationCritic times out, use fast backup
+                if current_agent_name == "ValuationCritic" and "Timeout" in type(e).__name__:
+                    logs.append("⚡ Timeout detected - switching to SimpleValuation")
+                    current_agent_name = "SimpleValuation"
+                else:
+                    current_agent_name = "FallbackAgent"
+                    
                 yield {"logs": "\n".join(logs), "status": "Error - Routing to Fallback"}
 
         if iteration_count >= max_iterations:

@@ -10,6 +10,8 @@ Constraints:
 - Execute market sell orders for all affected assets.
 - Output 'EMERGENCY_LIQUIDATION' and status.
 
+STATUS FIELD RULE: Always use exactly 'SUCCESS'. Never use 'OK', 'ok', 'done', or any other value.
+
 Valid Statuses: SUCCESS
 """
         super().__init__("Liquidation", system_prompt)

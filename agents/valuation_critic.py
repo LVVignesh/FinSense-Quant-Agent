@@ -13,6 +13,8 @@ Your 'output' field MUST be a JSON object containing EXACTLY these keys:
 - "quantity": integer (default to 1000)
 - "price": float (extracted from market data)
 
+STATUS FIELD RULE: Always use exactly 'SUCCESS' or 'PROCESS_SLOW'. Never use 'OK', 'ok', 'done', or any other value.
+
 Example 'output': {"action": "SELL", "quantity": 1000, "price": 175.50}
 """
         super().__init__("ValuationCritic", system_prompt)

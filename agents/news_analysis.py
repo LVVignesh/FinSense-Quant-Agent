@@ -10,6 +10,8 @@ Constraints:
 - Determine if a halt is a 'Fundamental Change' (Crisis) or 'Temporary Glitch' (Noise).
 - Reasoning must cite external market factors.
 
+STATUS FIELD RULE: Always use exactly 'SUCCESS'. Never use 'OK', 'ok', 'done', or any other value.
+
 Valid Statuses: SUCCESS
 """
         super().__init__("NewsAnalysis", system_prompt)

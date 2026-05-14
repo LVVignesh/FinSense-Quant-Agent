@@ -10,7 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import GROQ_API_KEY, MOCK_MODE, DEFAULT_MODEL
+from config import GROQ_API_KEY, MOCK_MODE, DEFAULT_MODEL, FAST_MODEL
 from constants.status import AgentStatus
 
 class AgentResponse(BaseModel):
@@ -20,10 +20,11 @@ class AgentResponse(BaseModel):
     reasoning: str = "No reasoning provided."
 
 class BaseAgent(ABC):
-    def __init__(self, name: str, system_prompt: str):
+    def __init__(self, name: str, system_prompt: str, fast_mode: bool = False):
         self.name = name
         self.system_prompt = system_prompt
         self.client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+        self.model = FAST_MODEL if fast_mode else DEFAULT_MODEL
 
     @abstractmethod
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -62,20 +63,28 @@ class BaseAgent(ABC):
         try:
             response = await asyncio.wait_for(
                 self.client.chat.completions.create(
-                    model=DEFAULT_MODEL,
+                    model=self.model,
                     messages=[
                         {"role": "system", "content": self.system_prompt + "\n\nCRITICAL: Return ONLY a raw JSON object. Do not include markdown blocks. Schema: {'status': str, 'output': str_or_dict, 'confidence': float, 'reasoning': str}."},
                         {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.1
                 ),
-                timeout=10.0
+                timeout=30.0
             )
             
             content = response.choices[0].message.content
             print(f"DEBUG [{self.name}] Raw: {content[:150]}...")
             
             extracted_data = self._extract_json(content)
+            
+            # Status Normalization
+            success_aliases = [
+                "ok", "OK", "optimized", "complete", "done", 
+                "approved", "filled", "success", "SUCCESS"
+            ]
+            if str(extracted_data.get("status", "")).upper() in [s.upper() for s in success_aliases]:
+                extracted_data["status"] = "SUCCESS"
             
             # Pydantic Validation
             try:
@@ -90,6 +99,14 @@ class BaseAgent(ABC):
                     "reasoning": str(extracted_data.get("reasoning", "Extracted but failed validation."))
                 }
 
+        except asyncio.TimeoutError:
+            print(f"[{self.name}] API Error: TimeoutError")
+            return {
+                "status": AgentStatus.PROCESS_SLOW,
+                "output": "LATENCY_CRITICAL: Timeout during inference.",
+                "confidence": 0.0,
+                "reasoning": "Agent failed to respond within 15000ms SLA."
+            }
         except Exception as e:
             print(f"[{self.name}] API Error: {type(e).__name__}")
             raise e

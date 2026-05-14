@@ -10,6 +10,7 @@ ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 # App Settings
 MOCK_MODE = os.getenv("MOCK_MODE", "True").lower() == "true"
 DEFAULT_MODEL = "llama-3.3-70b-versatile"  # Updated to newest Groq model
+FAST_MODEL = "llama-3.1-8b-instant"
 FALLBACK_MODEL = "mixtral-8x7b-32768"
 
 # Paths
