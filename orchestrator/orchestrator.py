@@ -65,27 +65,47 @@ Return JSON ONLY matching the OrchestratorDecision schema.
 
     def _hardcoded_logic(self, current_agent: str, last_output: Dict[str, Any]) -> str:
         status = last_output.get("status")
-        output_text = str(last_output.get("output", ""))
-        
+        output = last_output.get("output", {})
+        output_text = str(output)
+
         if current_agent == "DataFetcher":
             if status == AgentStatus.SUCCESS: return "ValuationCritic"
             if status == AgentStatus.MARKET_FREEZE: return "NewsAnalysis"
+            if status == AgentStatus.PROCESS_SLOW: return "SimpleValuation"
             return "FallbackAgent"
-        
+
         if current_agent == "ValuationCritic":
             if status == AgentStatus.SUCCESS: return "RiskManager"
             if status == AgentStatus.PROCESS_SLOW: return "SimpleValuation"
             return "FallbackAgent"
-            
+
+        if current_agent == "SimpleValuation":
+            if status == AgentStatus.SUCCESS: return "RiskManager"
+            return "FallbackAgent"
+
         if current_agent == "RiskManager":
-            if "APPROVED" in output_text: return "ExecutionBot"
+            # Route by status — output is now a typed dict, not a text string
+            if status == AgentStatus.SUCCESS: return "ExecutionBot"
             if status == AgentStatus.POLICY_REJECT: return "Fractionalizer"
-            
+            return "FallbackAgent"
+
         if current_agent == "Fractionalizer":
             return "RiskManager"
-            
+
+        if current_agent == "ExecutionBot":
+            return "FINISH"
+
         if current_agent == "NewsAnalysis":
-            if "Fundamental Change" in output_text: return "Liquidation"
+            # Route by structured crisis_level field
+            output = last_output.get("output", {})
+            if isinstance(output, dict):
+                crisis_level = output.get("crisis_level", "NOISE")
+            else:
+                crisis_level = "CRISIS" if "CRISIS" in str(output) else "NOISE"
+            if crisis_level == "CRISIS": return "Liquidation"
             return "FallbackAgent"
-            
+
+        if current_agent in ("FallbackAgent", "Liquidation"):
+            return "FINISH"
+
         return "FINISH"
