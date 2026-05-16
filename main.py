@@ -52,19 +52,12 @@ class FinSenseApp:
             logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 Activating {current_agent_name}...")
             yield {"logs": "\n".join(logs), "status": f"Running: {current_agent_name}"}
             
-            # BUG 2 FIX: Build a richer context for the agent
-            if current_agent_name == "ExecutionBot":
-                # Special Master Context for the final trader
-                valuation_data = self.history[1].get("output", "") if len(self.history) > 1 else "N/A"
-                risk_data = self.history[-1].get("output", "") if self.history else "N/A"
-                context_str = f"TICKER: {ticker}\nVALUATION: {valuation_data}\nRISK_APPROVAL: {risk_data}\nACTION: Execute this approved trade now."
-                context = {"ticker": ticker, "last_result": {"output": context_str}, "history": self.history}
-            else:
-                context = {
-                    "ticker": ticker,
-                    "last_result": self.history[-1] if self.history else None,
-                    "history": self.history[-3:]
-                }
+            # Build structured context for each agent
+            context = {
+                "ticker": ticker,
+                "last_result": self.history[-1] if self.history else None,
+                "history": self.history
+            }
             
             # Execute Agent
             try:
@@ -114,7 +107,7 @@ class FinSenseApp:
 app_instance = FinSenseApp()
 
 def run_ui():
-    with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="slate")) as demo:
+    with gr.Blocks() as demo:
         gr.Markdown("# 💰 FinSense: Level 5 Autonomous Quant Analyst")
         gr.Markdown("### Advanced Multi-Agent System (LLM Orchestrated)")
         
@@ -144,7 +137,7 @@ def run_ui():
         gr.Markdown("- **MARKET_FREEZE_DEMO**: Market Failure -> Reroute to News Analysis.")
         gr.Markdown("- **SLOW_PROCESS_DEMO**: Latency Failure -> Reroute to Simple Valuation.")
 
-    demo.queue().launch(share=False)
+    demo.queue().launch(share=False, theme=gr.themes.Soft(primary_hue="blue", secondary_hue="slate"))
 
 if __name__ == "__main__":
     run_ui()
