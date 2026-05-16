@@ -58,10 +58,13 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 ```text
 GROQ_API_KEY=your_groq_key_here
-MOCK_MODE=False
+MOCK_MODE=False   # Set to True to run without an API key
 ```
 
-### 3. Launch Dashboard
+> **Note:** `MOCK_MODE=False` requires a valid `GROQ_API_KEY` from [console.groq.com](https://console.groq.com/).  
+> Set `MOCK_MODE=True` to test the full pipeline logic without any API key.
+
+### 3. Launch Dashboard (or use Docker)
 ```bash
 python main.py
 ```

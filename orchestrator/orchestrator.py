@@ -38,15 +38,27 @@ ROUTING CRITERIA:
 - If status is POLICY_REJECT: You MUST route to Fractionalizer to optimize size.
 - If status is MARKET_FREEZE: You MUST route to NewsAnalysis for crisis diagnosis.
 
-Return JSON ONLY matching the OrchestratorDecision schema.
+Return ONLY a raw JSON object with no markdown. Start with { and end with }.
+Required fields: next_agent, reasoning, priority (one of LOW, MEDIUM, HIGH, URGENT)
 """
 
     async def decide_next_agent(self, current_agent: str, workflow_state: Dict[str, Any]) -> str:
         """Uses LLM to reason dynamically about the next step."""
-        if not self.client:
-            return self._hardcoded_logic(current_agent, workflow_state.get("last_result", {}))
+        last_result = workflow_state.get("last_result", {})
+        last_status = last_result.get("status", "")
 
-        prompt = f"Current Agent: {current_agent}\nWorkflow State: {json.dumps(workflow_state)}"
+        # ── Deterministic Terminal Guards ─────────────────────────────────────
+        # These states are ALWAYS terminal. The LLM cannot override them.
+        if current_agent == "ExecutionBot" and last_status == AgentStatus.SUCCESS:
+            return "FINISH"
+        if current_agent in ("FallbackAgent", "Liquidation"):
+            return "FINISH"
+        # ─────────────────────────────────────────────────────────────────────
+
+        if not self.client:
+            return self._hardcoded_logic(current_agent, last_result)
+
+        prompt = f"Current Agent: {current_agent}\nWorkflow State: {json.dumps(workflow_state, default=str)}"
         
         try:
             response = await self.client.chat.completions.create(
@@ -55,7 +67,7 @@ Return JSON ONLY matching the OrchestratorDecision schema.
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"}
+                temperature=0.1
             )
             content = response.choices[0].message.content
             decision = OrchestratorDecision.model_validate_json(content)
