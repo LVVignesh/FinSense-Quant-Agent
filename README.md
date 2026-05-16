@@ -12,6 +12,44 @@
 
 Unlike traditional trading bots, FinSense does not follow a linear script. It uses a central **Orchestrator Agent** that monitors every step of the pipeline and autonomously decides the next course of action based on market conditions and agent outputs.
 
+```mermaid
+graph TD
+    %% Core Agents
+    O{LLM Orchestrator}
+    DF[DataFetcher]
+    VC[ValuationCritic]
+    RM[RiskManager]
+    EB[ExecutionBot]
+    
+    %% Support Agents
+    FR[Fractionalizer]
+    NA[NewsAnalysis]
+    LQ[Liquidation]
+    SV[SimpleValuation]
+    
+    %% Happy Path
+    DF -->|SUCCESS| VC
+    VC -->|SUCCESS| RM
+    RM -->|APPROVED| EB
+    
+    %% Error / Edge Case Branches
+    RM -.->|POLICY_REJECT| FR
+    FR -.->|OPTIMIZED| RM
+    
+    DF -.->|MARKET_FREEZE| NA
+    NA -.->|CRISIS| LQ
+    
+    DF -.->|PROCESS_SLOW| SV
+    VC -.->|PROCESS_SLOW| SV
+    SV -.->|SUCCESS| RM
+    
+    %% Connections to Orchestrator
+    O -.-> DF
+    O -.-> VC
+    O -.-> RM
+    O -.-> EB
+```
+
 ### 🤖 The Agent Team
 - **DataFetcher**: High-speed market data retrieval and summarization.
 - **ValuationCritic**: Quantitative fundamental analysis and BUY/SELL recommendations.

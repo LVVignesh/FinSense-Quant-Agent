@@ -3,6 +3,9 @@ import asyncio
 import json
 import pandas as pd
 from datetime import datetime
+import uuid
+import time
+import os
 from typing import Dict, Any, List, Generator
 
 # Import our new architecture
@@ -28,6 +31,42 @@ class FinSenseApp:
         }
         self.orchestrator = Orchestrator()
         self.history = []
+        os.makedirs("logs", exist_ok=True)
+
+    def write_structured_log(self, ticker: str, start_time: float, agents_activated: List[str]):
+        """Phase C: Write structured JSON log per cycle."""
+        session_id = str(uuid.uuid4())
+        duration_ms = int((time.time() - start_time) * 1000)
+        
+        # Determine final status and order ID from history
+        final_status = "UNKNOWN"
+        order_id = None
+        for result in reversed(self.history):
+            if "FILLED" in str(result.get("output", "")):
+                final_status = "FILLED"
+                try:
+                    order_id = result.get("output", {}).get("order_fill", {}).get("order_id")
+                except:
+                    pass
+                break
+            if "EMERGENCY_LIQUIDATION" in str(result.get("output", "")):
+                final_status = "LIQUIDATED"
+                break
+            if result.get("status") in [AgentStatus.DATA_ERROR, "Error - Routing to Fallback"]:
+                final_status = "ERROR"
+        
+        log_data = {
+            "session_id": session_id,
+            "ticker": ticker,
+            "timestamp": datetime.now().isoformat(),
+            "agents_activated": agents_activated,
+            "total_duration_ms": duration_ms,
+            "final_status": final_status,
+            "order_id": order_id
+        }
+        
+        with open(f"logs/run_{session_id}.json", "w") as f:
+            json.dump(log_data, f, indent=2)
 
     async def run_ticker_cycle(self, ticker: str) -> Generator[Dict[str, Any], None, None]:
         """Main execution loop controlled by the Orchestrator."""
@@ -42,9 +81,12 @@ class FinSenseApp:
         # Safeguard: Limit total iterations
         max_iterations = 15
         iteration_count = 0
+        agents_activated = []
+        start_time = time.time()
         
         while current_agent_name != "FINISH" and iteration_count < max_iterations:
             iteration_count += 1
+            agents_activated.append(current_agent_name)
             agent = self.agents.get(current_agent_name)
             if not agent:
                 break
@@ -100,6 +142,9 @@ class FinSenseApp:
 
         if iteration_count >= max_iterations:
              logs.append("⚠️ Safety Break: Maximum workflow depth reached.")
+             
+        # Write structured JSON log (Phase C)
+        self.write_structured_log(ticker, start_time, agents_activated)
              
         logs.append("✅ Workflow Cycle Complete.")
         yield {"logs": "\n".join(logs), "status": "Idle"}
