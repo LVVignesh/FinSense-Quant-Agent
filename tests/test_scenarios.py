@@ -22,3 +22,21 @@ async def test_end_to_end_scenarios():
     for f in os.listdir("logs"):
         if f.startswith("run_") and f.endswith(".json"):
             os.remove(os.path.join("logs", f))
+
+@pytest.mark.asyncio
+async def test_policy_reject_end_to_end():
+    app = FinSenseApp()
+    
+    events = []
+    async for event in app.run_ticker_cycle("POLICY_REJECT_DEMO"):
+        events.append(event["status"])
+    
+    assert "Running: DataFetcher" in events
+    assert "Running: Fractionalizer" in events
+    assert "Running: ExecutionBot" in events
+    assert "Idle" in events[-1]
+    
+    # Cleanup logs
+    for f in os.listdir("logs"):
+        if f.startswith("run_") and f.endswith(".json"):
+            os.remove(os.path.join("logs", f))
