@@ -1,3 +1,13 @@
+---
+title: FinSense Quant Agent
+emoji: 💰
+colorFrom: blue
+colorTo: slate
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+---
 # 💰 FinSense: Level 5 Autonomous Quant Analyst System
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
